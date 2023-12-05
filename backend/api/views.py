@@ -1,18 +1,13 @@
-from django.shortcuts import render
+"""This file contains all methods for API responses."""
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
-
 from .models import Event
 
 
-def test_api_view(request):
-    return JsonResponse({
-        'message': 'Good response!'
-    })
-
 def get_all_events(request):
+    """Return all events as a JSON response for API."""
     events = Event.objects.all()
     events_json = []
     for event in events:
@@ -27,14 +22,16 @@ def get_all_events(request):
 
     return JsonResponse({"events": events_json})
 
+
 def get_event(request, event_id):
+    """Return a single event (using ID from URL) as a JSON response."""
     try:
         event = Event.objects.get(id=event_id)
         event_json = {
             "id": event.id,
             "description": event.description,
             "date": event.date,
-            "cancelled": event.cancelled,        
+            "cancelled": event.cancelled,
             "maxAttendees": event.max_attendees
         }
 
@@ -42,8 +39,10 @@ def get_event(request, event_id):
     except ObjectDoesNotExist:
         return JsonResponse({"error": "Event does not exist."}, status=404)
 
+
 @csrf_exempt
 def create_event(request):
+    """Create a new event based on JSON request using POST."""
     if request.method == "POST":
         try:
             request_body = json.loads(request.body.decode("utf-8"))
@@ -52,31 +51,45 @@ def create_event(request):
             max_attendees = request_body.get("maxAttendees")
             cancelled = request_body.get("cancelled")
 
-            if cancelled == None: cancelled = False
-            print(f"Cancelled: {cancelled}")
+            if cancelled is None:
+                cancelled = False
 
-            print(f"Description:{description}\nDate:{date}\nCancelled:{cancelled}\nMax attendees:{max_attendees}\n")
-            if (description or date or max_attendees) == None: return JsonResponse({"error": "description, date, and maxAttendees cannot be null."}, status=400)
+            if (description or date or max_attendees) is None:
+                return JsonResponse({
+                    "error": "description, date, and maxAttendees cannot be null."
+                    }, status=400)
 
-
-            new_event = Event(description=description, date=date, cancelled=cancelled, max_attendees=max_attendees)
+            new_event = Event(
+                description=description,
+                date=date,
+                cancelled=cancelled,
+                max_attendees=max_attendees
+                )
             new_event.save()
-            return JsonResponse({"message": "Event created successfully."}, status=201)
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invaid JSON provided."}, status=400)
+            return JsonResponse({
+                "message": "Event created successfully."
+                }, status=201)
+        except Exception:
+            return JsonResponse({
+                "error": "Could not create. Invaid data provided."
+                }, status=400)
     else:
         return JsonResponse({"error": "Method must be POST."}, status=405)
 
+
 @csrf_exempt
 def edit_event(request):
+    """Modify a specified event from JSON request using PUT."""
     if request.method == "PUT":
         try:
             request_body = json.loads(request.body.decode("utf-8"))
-            
+
             try:
                 event = Event.objects.get(id=request_body.get("id"))
             except ObjectDoesNotExist:
-                return JsonResponse({"error": "Event could not be found."}, status=404)
+                return JsonResponse({
+                    "error": "Event could not be found."
+                    }, status=404)
 
             # Conditionally update event fields
             if "description" in request_body:
@@ -93,27 +106,43 @@ def edit_event(request):
 
             event.save()
 
-            return JsonResponse({"message": "Event updated successfully."}, status=200)
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON provided."}, status=400)
+            return JsonResponse({
+                "message": "Event updated successfully."
+                }, status=200)
+        except Exception:
+            return JsonResponse({
+                "error": "Could not update. Invalid data provided."
+                }, status=400)
     else:
-        return JsonResponse({"error": "Method must be PUT."}, status=405)
+        return JsonResponse({
+            "error": "Method must be PUT."
+            }, status=405)
+
 
 @csrf_exempt
 def delete_event(request):
+    """Delete a specified event from JSON request using DELETE."""
     if request.method == "DELETE":
         try:
             request_body = json.loads(request.body.decode("utf-8"))
-            
+
             try:
                 event = Event.objects.get(id=request_body.get("id"))
             except ObjectDoesNotExist:
-                return JsonResponse({"error": "Event could not be found."}, status=404)
+                return JsonResponse({
+                    "error": "Event could not be found."
+                    }, status=404)
 
             event.delete()
 
-            return JsonResponse({"message": "Event deleted successfully."}, status=200)
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON provided."}, status=400)
+            return JsonResponse({
+                "message": "Event deleted successfully."
+                }, status=200)
+        except Exception:
+            return JsonResponse({
+                "error": "Could not delete. Invalid data provided."
+                }, status=400)
     else:
-        return JsonResponse({"error": "Method must be DELETE."}, status=405)
+        return JsonResponse({
+            "error": "Method must be DELETE."
+            }, status=405)
